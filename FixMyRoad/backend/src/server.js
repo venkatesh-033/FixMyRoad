@@ -4,7 +4,7 @@ import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import nodemailer from 'nodemailer';
+
 import { createHash, randomInt } from 'crypto';
 import multer from 'multer';
 import path from 'path';
@@ -69,27 +69,51 @@ app.get('/api/health', (_req, res) => res.json({ status: 'ok', service: 'FixMyRo
 
 const otpExpiryMinutes = Math.max(1, Number(process.env.OTP_EXPIRES_MINUTES) || 5);
 const otpHash = (otp) => createHash('sha256').update(String(otp)).digest('hex');
-const mailer = process.env.EMAIL_USER && process.env.EMAIL_PASS
-  ? nodemailer.createTransport({
-      service: 'gmail',
-      auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }
-    })
-  : null;
+
 
 async function sendOtpEmail(email, otp, purpose) {
-  if (!mailer) {
-    const error = new Error('Email is not configured. Add EMAIL_USER and EMAIL_PASS to backend/.env, then restart the backend.');
+  if (!process.env.RESEND_API_KEY) {
+    const error = new Error('Email service is not configured.');
     error.status = 503;
     throw error;
   }
-  const action = purpose === 'register' ? 'verify your FixMyRoad account' : 'complete your FixMyRoad login';
-  await mailer.sendMail({
-    from: `FixMyRoad <${process.env.EMAIL_USER}>`,
-    to: email,
-    subject: 'Your FixMyRoad verification code',
-    text: `Your code to ${action} is ${otp}. It expires in ${otpExpiryMinutes} minutes. If you did not request this code, you can ignore this email.`,
-    html: `<div style="font-family:Arial,sans-serif;max-width:520px;margin:auto;padding:24px;color:#1c2c28"><h2>FixMyRoad verification</h2><p>Use this code to ${action}:</p><div style="font-size:32px;font-weight:bold;letter-spacing:8px;padding:18px;background:#f1f6f0;border-radius:10px;text-align:center">${otp}</div><p>This code expires in ${otpExpiryMinutes} minutes. Never share it with anyone.</p><p style="color:#6c7a74">If you did not request this code, ignore this email.</p></div>`
+
+  const action =
+    purpose === 'register'
+      ? 'verify your FixMyRoad account'
+      : 'complete your FixMyRoad login';
+
+  const response = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      from: 'FixMyRoad <onboarding@resend.dev>',
+      to: [email],
+      subject: 'Your FixMyRoad verification code',
+      text: `Your code to ${action} is ${otp}. It expires in ${otpExpiryMinutes} minutes. If you did not request this code, you can ignore this email.`,
+      html: `
+        <div style="font-family:Arial,sans-serif;padding:24px">
+          <h2>FixMyRoad verification</h2>
+          <p>Use this code to ${action}:</p>
+          <h1>${otp}</h1>
+          <p>This code expires in ${otpExpiryMinutes} minutes.</p>
+          <p>Never share your verification code.</p>
+        </div>
+      `
+    })
   });
+
+  const result = await response.json();
+
+  if (!response.ok) {
+    console.error('Resend email error:', result);
+    throw new Error('Unable to send verification email.');
+  }
+
+  console.log('Verification email accepted by Resend.');
 }
 
 async function createOtpChallenge({ email, purpose, name = '', passwordHash = '', userId = null }) {
