@@ -15,6 +15,9 @@ import { requireAuth, requireAuthority } from './auth.js';
 
 dotenv.config();
 const app = express();
+app.get("/", (req, res) => {
+  res.send("FixMyRoad backend is running!");
+});
 const PORT = process.env.PORT || 5000;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const uploadsDir = path.resolve(__dirname, '../uploads');
