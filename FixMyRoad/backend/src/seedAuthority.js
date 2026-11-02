@@ -1,0 +1,12 @@
+import dotenv from 'dotenv';
+import mongoose from 'mongoose';
+import bcrypt from 'bcryptjs';
+import { User } from './models.js';
+dotenv.config();
+if (!process.env.AUTHORITY_EMAIL || !process.env.AUTHORITY_PASSWORD) throw new Error('Set AUTHORITY_EMAIL and AUTHORITY_PASSWORD in .env first.');
+await mongoose.connect(process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/fixmyroad');
+const email = process.env.AUTHORITY_EMAIL.toLowerCase().trim();
+const passwordHash = await bcrypt.hash(process.env.AUTHORITY_PASSWORD, 12);
+await User.findOneAndUpdate({ email }, { name: process.env.AUTHORITY_NAME || 'Road Authority', email, passwordHash, role: 'authority', emailVerified: true }, { upsert: true, new: true, setDefaultsOnInsert: true });
+console.log(`Authority account ready: ${email}`);
+await mongoose.disconnect();
