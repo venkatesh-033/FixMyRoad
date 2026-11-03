@@ -92,7 +92,7 @@ async function sendOtpEmail(email, otp, purpose) {
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      from: 'FixMyRoad <onboarding@resend.dev>',
+      from: process.env.RESEND_FROM_EMAIL,
       to: [email],
       subject: 'Your FixMyRoad verification code',
       text: `Your code to ${action} is ${otp}. It expires in ${otpExpiryMinutes} minutes. If you did not request this code, you can ignore this email.`,
