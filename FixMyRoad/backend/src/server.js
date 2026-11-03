@@ -25,7 +25,9 @@ fs.mkdirSync(uploadsDir, { recursive: true });
 const allowedOrigins = [
   'http://localhost:5173',
   'https://fix-my-road-inky.vercel.app',
-  'https://fix-my-road-gwusazv1i-vps-projects-ea70b8e2.vercel.app'
+  'https://fix-my-road-gwusazv1i-vps-projects-ea70b8e2.vercel.app',
+  'https://fixmyroad.online',
+  'https://www.fixmyroad.online'
 ];
 
 app.use(cors({
